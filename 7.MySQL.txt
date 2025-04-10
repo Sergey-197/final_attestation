@@ -1,0 +1,118 @@
+7. Работа с MySQL
+# Создание базы данных
+-- Создадим базу данных с именем HumanFriends:
+
+CREATE DATABASE HumanFriends;
+
+# Создание таблиц
+-- Таблица Pets
+-- Эта таблица будет содержать домашних питомцев (например, собак, кошек, хомяков).
+USE HumanFriends;
+CREATE TABLE Pets (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50),
+    Type VARCHAR(50),
+    BirthDate DATE,
+    Commands TEXT
+);
+
+-- Таблица PackAnimals
+-- Таблица для тягловых животных (лошадей, верблюдов, ослов):
+CREATE TABLE PackAnimals (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50),
+    Type VARCHAR(50),
+    BirthDate DATE,
+    Commands TEXT
+);
+
+# Вставка данных
+-- Заполняем данные в обе таблицы.
+-- Для таблицы Pets:
+INSERT INTO Pets (Name, Type, BirthDate, Commands)
+VALUES ('Fido', 'Dog', '2020-01-01', 'Sit, Stay, Fetch'),
+       ('Whiskers', 'Cat', '2019-05-15', 'Sit, Pounce'),
+       ('Hammy', 'Hamster', '2021-03-10', 'Roll, Hide'),
+       ('Buddy', 'Dog', '2018-12-10', 'Sit, Paw, Bark'),
+       ('Smudge', 'Cat', '2020-02-20', 'Sit, Pounce, Scratch');
+
+-- Для таблицы PackAnimals:
+INSERT INTO PackAnimals (Name, Type, BirthDate, Commands)
+VALUES ('Thunder', 'Horse', '2015-07-21', 'Trot, Canter, Gallop'),
+       ('Sandy', 'Camel', '2016-11-03', 'Walk, Carry Load'),
+       ('Eeyore', 'Donkey', '2017-09-18', 'Walk, Carry Load, Bray'),
+       ('Storm', 'Horse', '2014-05-05', 'Trot, Canter'),
+       ('Dune', 'Camel', '2018-12-12', 'Walk, Sit'),
+       ('Burro', 'Donkey', '2019-01-23', 'Walk, Bray, Kick'),
+       ('Blaze', 'Horse', '2016-02-29', 'Trot, Jump, Gallop'),
+       ('Sahara', 'Camel', '2015-08-14', 'Walk, Run');
+
+# Удаление записей о верблюдах
+-- Удалим всех верблюдов из таблицы PackAnimals.
+DELETE FROM PackAnimals WHERE Type = 'Camel';
+
+# Объединение таблиц лошадей и ослов
+-- Объединим таблицы лошадей (Horse) и ослов (Donkey) в одну таблицу, скажем, Equines. 
+-- Для этого создадим новую таблицу и перенесем туда данные:
+-- Создаем таблицу Equines
+CREATE TABLE Equines (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50),
+    Type VARCHAR(50),  -- Horse or Donkey
+    BirthDate DATE,
+    Commands TEXT
+);
+
+-- Переносим данные из PackAnimals для лошадей и ослов
+INSERT INTO Equines (Name, Type, BirthDate, Commands)
+SELECT Name, Type, BirthDate, Commands
+FROM PackAnimals
+WHERE Type IN ('Horse', 'Donkey');
+
+-- Удаляем строки с лошадьми и ослами из PackAnimals
+DELETE FROM PackAnimals WHERE Type IN ('Horse', 'Donkey');
+Теперь у нас есть отдельная таблица Equines, содержащая лошадей и ослов.
+
+# Новая таблица для животных в возрасте от 1 до 3 лет
+-- Создадим таблицу YoungAnimals для животных возрастом от 1 до 3 лет. Мы будем рассчитывать возраст животных на основе текущей даты и даты рождения.
+CREATE TABLE YoungAnimals (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50),
+    Type VARCHAR(50),
+    BirthDate DATE,
+    AgeInMonths INT,
+    OriginalTable VARCHAR(100)  -- откуда пришли данные
+);
+
+-- Вычисляем возраст животных и заполняем таблицу
+INSERT INTO YoungAnimals (Name, Type, BirthDate, AgeInMonths, OriginalTable)
+SELECT p.Name, p.Type, p.BirthDate, TIMESTAMPDIFF(MONTH, p.BirthDate, CURDATE()) AS AgeInMonths, 'Pets'
+FROM Pets p
+WHERE TIMESTAMPDIFF(YEAR, p.BirthDate, CURDATE()) BETWEEN 1 AND 3
+UNION ALL
+SELECT e.Name, e.Type, e.BirthDate, TIMESTAMPDIFF(MONTH, e.BirthDate, CURDATE()) AS AgeInMonths, 'Equines'
+FROM Equines e
+WHERE TIMESTAMPDIFF(YEAR, e.BirthDate, CURDATE()) BETWEEN 1 AND 3;
+-- Здесь мы используем функцию TIMESTAMPDIFF() для расчета возраста в месяцах и выбираем тех животных, чей возраст находится между 1 и 3 годами.
+
+# Объединение всех созданных таблиц в одну
+-- Объединим все таблицы в одну общую таблицу, сохранив информацию о принадлежности к исходной таблице.
+CREATE TABLE AllAnimals (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50),
+    Type VARCHAR(50),
+    BirthDate DATE,
+    Commands TEXT,
+    SourceTable VARCHAR(100)  -- откуда пришли данные
+);
+
+-- Добавление данных из всех таблиц
+INSERT INTO AllAnimals (Name, Type, BirthDate, Commands, SourceTable)
+SELECT Name, Type, BirthDate, Commands, 'Pets' AS SourceTable
+FROM Pets
+UNION ALL
+SELECT Name, Type, BirthDate, Commands, 'Equines' AS SourceTable
+FROM Equines
+UNION ALL
+SELECT Name, Type, BirthDate, NULL, 'YoungAnimals' AS SourceTable
+FROM YoungAnimals;
